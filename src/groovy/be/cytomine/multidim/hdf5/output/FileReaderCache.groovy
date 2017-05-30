@@ -16,6 +16,7 @@
 
 package be.cytomine.multidim.hdf5.output
 
+import groovy.util.logging.Log
 import java.util.concurrent.Executors
 
 /**
@@ -25,6 +26,7 @@ class FileReaderCache {
 
     private static FileReaderCache singleton
     private HashMap<String, HDF5FileReader> cache
+    private int maxCache = 5
     private def threadpool //Nb maybe we should use only one tp for the filereaders (this one)
 
     private FileReaderCache(){
@@ -41,12 +43,28 @@ class FileReaderCache {
     }
 
     public HDF5FileReader getReader(def name){
+        def reader
         if(cache.containsKey(name)){
-            return cache.get(name)
+            reader = cache.get(name)
+            reader.hit()
         }
-        def reader = new HDF5FileReader(name)
-        cache.put(name, reader)
+        else{
+            reader = new HDF5FileReader(name)
+            if(cache.size() >= maxCache)
+                removeLRU()
+            cache.put(name, reader)
+        }
         return reader
+    }
+
+    private removeLRU(){
+        synchronized (this) {
+            def lru = cache.min { it.getValue().lastUse() }
+            cache.remove(lru.getKey())
+            log.info "Remove " + lru.getKey() + " from File Cache cache "
+            System.gc()
+        }
+
     }
 
     public void shutdown(){

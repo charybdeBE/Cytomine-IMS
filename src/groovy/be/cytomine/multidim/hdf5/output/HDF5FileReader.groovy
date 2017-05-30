@@ -22,6 +22,8 @@ import ch.systemsx.cisd.hdf5.IHDF5Reader
 import grails.util.Holders
 
 import java.util.concurrent.Executors
+import groovy.util.logging.Log
+
 
 /**
  * Created by laurent on 07.01.17.
@@ -38,8 +40,10 @@ class HDF5FileReader {
     private int dimensions
     private HashMap cache
     private int cache_size //NB this is maybe more efficient that asking cache.size()
+    private long lastUse
 
     public HDF5FileReader(String name) {
+        this.lastUse = System.currentTimeMillis()
         this.name = name
         def script = Holders.config.cytomine.hdf5.scriptToFindFiles
         def stringScript = "" + script + " " + name
@@ -187,9 +191,8 @@ class HDF5FileReader {
             def lru = cache.min{ it.getValue().lastUse() }
             cache.remove(lru.getKey())
             cache_size--
-            println "Remove " + lru.getKey() + " from cache ("+cache_size+"/"+CACHE_MAX+")"
+            log.info "Remove " + lru.getKey() + " from cache ("+cache_size+"/"+CACHE_MAX+")"
             System.gc()
-
         }
     }
 
@@ -199,6 +202,14 @@ class HDF5FileReader {
         if(CACHE_MAX < 0) //TODO implement stuff without caching ?
             CACHE_MAX = 1
         replaceLRU()
+    }
+
+    public void hit(){
+        this.lastUse = System.currentTimeMillis()
+    }
+
+    public long lastUse(){
+        return this.lastUse
     }
 }
 
