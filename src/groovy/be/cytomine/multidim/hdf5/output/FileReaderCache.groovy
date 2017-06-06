@@ -62,7 +62,7 @@ class FileReaderCache {
             def lru = cache.min { it.getValue().lastUse() }
             cache.remove(lru.getKey())
             log.info "Remove " + lru.getKey() + " from File Cache cache "
-            System.gc()
+        //    System.gc()
         }
 
     }
